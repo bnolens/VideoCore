@@ -1,18 +1,18 @@
 /*
- 
+
  Video Core
  Copyright (c) 2014 James G. Hurley
- 
+
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
  in the Software without restriction, including without limitation the rights
  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  copies of the Software, and to permit persons to whom the Software is
  furnished to do so, subject to the following conditions:
- 
+
  The above copyright notice and this permission notice shall be included in
  all copies or substantial portions of the Software.
- 
+
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -20,7 +20,7 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
- 
+
  */
 #import <CoreFoundation/CoreFoundation.h>
 #import <Foundation/Foundation.h>
@@ -53,7 +53,7 @@
 @end
 namespace videocore {
     namespace Apple {
-        
+
         StreamSession::StreamSession()
         : m_status(0)
         , m_runLoop(nullptr)
@@ -63,13 +63,13 @@ namespace videocore {
             m_streamCallback = [[NSStreamCallback alloc] init];
             SCB(m_streamCallback).session = this;
         }
-        
+
         StreamSession::~StreamSession()
         {
             disconnect();
             [SCB(m_streamCallback) release];
         }
-        
+
         void
         StreamSession::connect(const std::string& host, int port, StreamSessionCallback_T callback)
         {
@@ -78,7 +78,7 @@ namespace videocore {
                 disconnect();
             }
             @autoreleasepool {
-                
+
                 CFReadStreamRef readStream;
                 CFWriteStreamRef writeStream;
 
@@ -87,13 +87,13 @@ namespace videocore {
                                                    port,
                                                    &readStream,
                                                    &writeStream);
-            
+
                 m_inputStream = (NSInputStream*)readStream;
                 m_outputStream = (NSOutputStream*)writeStream;
-            
+
 
                 dispatch_queue_t queue = dispatch_queue_create("com.videocore.network", 0);
-                
+
                 if(m_inputStream && m_outputStream) {
                     dispatch_async(queue, ^{
                         this->startNetwork();
@@ -106,7 +106,7 @@ namespace videocore {
             }
 
         }
-        
+
         void
         StreamSession::disconnect()
         {
@@ -138,7 +138,7 @@ namespace videocore {
         StreamSession::write(uint8_t *buffer, size_t size)
         {
             NSInteger ret = 0;
-          
+
             if( NSOS(m_outputStream).hasSpaceAvailable ) {
                 ret = [NSOS(m_outputStream) write:buffer maxLength:size];
             }
@@ -152,14 +152,14 @@ namespace videocore {
 
             return ret;
         }
-        
+
         ssize_t
         StreamSession::read(uint8_t *buffer, size_t size)
         {
             NSInteger ret = 0;
-            
+
             ret = [NSIS(m_inputStream) read:buffer maxLength:size];
-            
+
             if((ret < size) && (m_status & kStreamStatusReadBufferHasBytes)) {
                 m_status ^= kStreamStatusReadBufferHasBytes;
             }
@@ -205,15 +205,16 @@ namespace videocore {
             }
             if(event & NSStreamEventErrorOccurred) {
                 setStatus(kStreamStatusErrorEncountered, true);
-                if (NSIS(m_inputStream).streamError) {
+                NSLog(@"Input or output stream error");
+                /*if (NSIS(m_inputStream).streamError) {
                     NSLog(@"Input stream error:%@", NSIS(m_inputStream).streamError);
                 }
                 if (NSOS(m_outputStream).streamError) {
                     NSLog(@"Output stream error:%@", NSIS(m_outputStream).streamError);
-                }
+                }*/
             }
         }
-        
+
         void
         StreamSession::startNetwork()
         {
@@ -228,6 +229,6 @@ namespace videocore {
             [(id)m_runLoop retain];
             [NSRL(m_runLoop) run];
         }
-        
+
     }
 }
